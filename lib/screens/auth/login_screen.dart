@@ -52,6 +52,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _continueAsGuest() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await ref.read(authNotifierProvider.notifier).continueAsGuest();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed(AppRoutes.roleSelection);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Guest access failed: ${e.toString()}'),
+          backgroundColor: ErasTheme.sosRed,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   void _enterDemoMode() {
     ref.read(isDemoModeProvider.notifier).state = true;
     ref.read(demoUserProvider.notifier).state = demoUser;
@@ -261,6 +281,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
 
                           const SizedBox(height: ErasTheme.spacingSm),
+
+                          OutlinedButton.icon(
+                            onPressed: _isLoading ? null : _continueAsGuest,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: ErasTheme.medicalBlue,
+                              minimumSize: const Size(double.infinity, 56),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  ErasTheme.borderRadiusMd,
+                                ),
+                              ),
+                              side: BorderSide(
+                                color: ErasTheme.medicalBlue.withOpacity(0.45),
+                                width: 1.5,
+                              ),
+                            ),
+                            icon: const Icon(Icons.person_outline, size: 22),
+                            label: Text(
+                              'Continue as Guest',
+                              style: ErasTheme.labelLarge.copyWith(
+                                color: ErasTheme.medicalBlue,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: ErasTheme.spacingSm),
+
+                          Text(
+                            'Guest mode gives instant access without sign-up.',
+                            style: ErasTheme.labelSmall.copyWith(
+                              color: ErasTheme.textTertiary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+
+                          const SizedBox(height: ErasTheme.spacingXs),
 
                           Text(
                             trStatic(lang, 'demo_subtitle'),

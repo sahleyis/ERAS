@@ -104,7 +104,7 @@ class ErasTheme {
       ];
 
   // ─── Text Styles ────────────────────────────────────────────
-  static TextStyle get displayLarge => GoogleFonts.inter(
+  static TextStyle get displayLarge => GoogleFonts.sora(
         fontSize: 40,
         fontWeight: FontWeight.w800,
         color: textPrimary,
@@ -112,7 +112,7 @@ class ErasTheme {
         height: 1.1,
       );
 
-  static TextStyle get displayMedium => GoogleFonts.inter(
+  static TextStyle get displayMedium => GoogleFonts.sora(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         color: textPrimary,
@@ -120,83 +120,83 @@ class ErasTheme {
         height: 1.2,
       );
 
-  static TextStyle get headlineLarge => GoogleFonts.inter(
+  static TextStyle get headlineLarge => GoogleFonts.sora(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         color: textPrimary,
         height: 1.2,
       );
 
-  static TextStyle get headlineMedium => GoogleFonts.inter(
+  static TextStyle get headlineMedium => GoogleFonts.sora(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: textPrimary,
         height: 1.3,
       );
 
-  static TextStyle get titleLarge => GoogleFonts.inter(
+  static TextStyle get titleLarge => GoogleFonts.sora(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: textPrimary,
         height: 1.3,
       );
 
-  static TextStyle get titleMedium => GoogleFonts.inter(
+  static TextStyle get titleMedium => GoogleFonts.sora(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         color: textPrimary,
         height: 1.4,
       );
 
-  static TextStyle get bodyLarge => GoogleFonts.inter(
+  static TextStyle get bodyLarge => GoogleFonts.manrope(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: textPrimary,
         height: 1.5,
       );
 
-  static TextStyle get bodyMedium => GoogleFonts.inter(
+  static TextStyle get bodyMedium => GoogleFonts.manrope(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: textSecondary,
         height: 1.5,
       );
 
-  static TextStyle get labelLarge => GoogleFonts.inter(
+  static TextStyle get labelLarge => GoogleFonts.manrope(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: textPrimary,
         letterSpacing: 0.5,
       );
 
-  static TextStyle get labelMedium => GoogleFonts.inter(
+  static TextStyle get labelMedium => GoogleFonts.manrope(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         color: textSecondary,
       );
 
-  static TextStyle get labelSmall => GoogleFonts.inter(
+  static TextStyle get labelSmall => GoogleFonts.manrope(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         color: textTertiary,
         letterSpacing: 0.5,
       );
 
-  static TextStyle get sosText => GoogleFonts.inter(
+  static TextStyle get sosText => GoogleFonts.sora(
         fontSize: 36,
         fontWeight: FontWeight.w800,
         color: textOnRed,
         letterSpacing: 8,
       );
 
-  static TextStyle get emergencyTypeLabel => GoogleFonts.inter(
+  static TextStyle get emergencyTypeLabel => GoogleFonts.manrope(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: textPrimary,
         height: 1.3,
       );
 
-  static TextStyle get statusText => GoogleFonts.inter(
+  static TextStyle get statusText => GoogleFonts.manrope(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 1.0,
