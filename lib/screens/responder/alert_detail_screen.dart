@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/theme.dart';
 import '../../config/routes.dart';
+import '../../config/constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/responder_provider.dart';
+import '../../services/firestore_service.dart';
 import '../../models/emergency_model.dart';
 
 /// Alert detail screen — expanded view of an incoming alert.
