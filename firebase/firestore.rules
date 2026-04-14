@@ -1,0 +1,82 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper Functions ────────────────────────────────────
+
+    // Check if the user is the assigned responder for a given victim's emergency
+    function isAssignedResponder(victimId) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/emergencies/$(
+          get(/databases/$(database)/documents/users/$(victimId)).data.activeEmergencyId
+        )) &&
+        get(/databases/$(database)/documents/emergencies/$(
+          get(/databases/$(database)/documents/users/$(victimId)).data.activeEmergencyId
+        )).data.responderId == request.auth.uid &&
+        get(/databases/$(database)/documents/emergencies/$(
+          get(/databases/$(database)/documents/users/$(victimId)).data.activeEmergencyId
+        )).data.status in ['matched', 'inProgress'];
+    }
+
+    // ─── Users ───────────────────────────────────────────────
+
+    match /users/{userId} {
+      // Users can read/write their own profile
+      allow read: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId;
+      allow delete: if request.auth.uid == userId;
+
+      // Medical profile: readable by the user and their assigned responder
+      match /medicalProfile/{doc} {
+        allow read: if request.auth.uid == userId;
+        allow write: if request.auth.uid == userId;
+      }
+    }
+
+    // ─── Emergencies ─────────────────────────────────────────
+
+    match /emergencies/{emergencyId} {
+      // Any authenticated user can create an emergency
+      allow create: if request.auth != null
+        && request.resource.data.victimId == request.auth.uid;
+
+      // Victim and assigned responder can read
+      allow read: if request.auth != null
+        && (request.auth.uid == resource.data.victimId
+            || request.auth.uid == resource.data.responderId
+            || resource.data.notifiedResponders.hasAny([request.auth.uid]));
+
+      // Victim can cancel their own emergency
+      // Responder can update status to matched/inProgress
+      allow update: if request.auth != null
+        && (request.auth.uid == resource.data.victimId
+            || request.auth.uid == resource.data.responderId
+            || (resource.data.status == 'searching'
+                && request.resource.data.status == 'matched'));
+
+      // Chat subcollection
+      match /chat/{messageId} {
+        allow read: if request.auth != null
+          && (request.auth.uid == get(/databases/$(database)/documents/emergencies/$(emergencyId)).data.victimId
+              || request.auth.uid == get(/databases/$(database)/documents/emergencies/$(emergencyId)).data.responderId);
+
+        allow create: if request.auth != null
+          && request.resource.data.senderId == request.auth.uid;
+
+        allow update: if request.auth != null; // For marking as read
+      }
+    }
+
+    // ─── Responder Locations ─────────────────────────────────
+
+    match /responder_locations/{userId} {
+      // Any authenticated user can read (needed for geo-queries)
+      allow read: if request.auth != null;
+
+      // Only the owner can write their location
+      allow write: if request.auth.uid == userId;
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "422534235808",
+    "project_id": "eras-7946a",
+    "storage_bucket": "eras-7946a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:422534235808:android:c7ade5b4f2e77f5acaabc5",
+        "android_client_info": {
+          "package_name": "com.example.eras"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCPx0yiNMLBeCHcgcaYWq2_z7ECgazmGW8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
