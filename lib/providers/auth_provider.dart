@@ -83,6 +83,17 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     }
   }
 
+  /// Continue without sign-up using anonymous auth.
+  Future<void> continueAsGuest() async {
+    state = const AsyncValue.loading();
+    try {
+      final user = await _authService.signInAsGuest();
+      state = AsyncValue.data(user);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
   /// Start phone OTP verification.
   Future<void> verifyPhone({
     required String phoneNumber,

@@ -15,12 +15,12 @@ class RoleSelectionScreen extends ConsumerWidget {
     final isDemo = ref.watch(isDemoModeProvider);
     final demoUserState = ref.watch(demoUserProvider);
     final lang = ref.watch(appLanguageProvider);
+    final currentUser = ref.watch(currentUserProvider).value;
+    final isGuestUser = !isDemo && (currentUser?.isGuest ?? false);
 
     final userName = isDemo
         ? (demoUserState?.displayName ?? 'Demo User')
-        : ref.watch(currentUserProvider).whenOrNull(
-              data: (user) => user?.displayName,
-            ) ?? 'User';
+      : (currentUser?.displayName ?? 'User');
 
     return Scaffold(
       body: Stack(
@@ -117,6 +117,42 @@ class RoleSelectionScreen extends ConsumerWidget {
                             ),
                           ),
                         ],
+                        if (isGuestUser) ...[
+                          const SizedBox(height: ErasTheme.spacingMd),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: ErasTheme.spacingMd,
+                              vertical: ErasTheme.spacingSm,
+                            ),
+                            decoration: BoxDecoration(
+                              color: ErasTheme.medicalBlue.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(
+                                ErasTheme.borderRadiusFull,
+                              ),
+                              border: Border.all(
+                                color: ErasTheme.medicalBlue.withOpacity(0.35),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.person_outline,
+                                  color: ErasTheme.medicalBlue,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Guest Session Active',
+                                  style: ErasTheme.labelSmall.copyWith(
+                                    color: ErasTheme.medicalBlue,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: ErasTheme.spacingXl),
                         _ModeCard(
                           title: trStatic(lang, 'need_help'),
@@ -129,9 +165,12 @@ class RoleSelectionScreen extends ConsumerWidget {
                         const SizedBox(height: ErasTheme.spacingMd),
                         _ModeCard(
                           title: trStatic(lang, 'can_help'),
-                          subtitle: trStatic(lang, 'can_help_sub'),
+                          subtitle: isGuestUser
+                              ? 'Create an account to respond to emergencies'
+                              : trStatic(lang, 'can_help_sub'),
                           icon: Icons.medical_services,
                           color: ErasTheme.medicalBlue,
+                          isEnabled: !isGuestUser,
                           onTap: () => Navigator.of(context)
                               .pushReplacementNamed(AppRoutes.responderDashboard),
                         ),
@@ -255,6 +294,7 @@ class _ModeCard extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final Color color;
+  final bool isEnabled;
   final VoidCallback onTap;
 
   const _ModeCard({
@@ -262,35 +302,38 @@ class _ModeCard extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.color,
+    this.isEnabled = true,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final cardColor = isEnabled ? color : ErasTheme.textTertiary;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(ErasTheme.borderRadiusXl),
-        onTap: onTap,
+        onTap: isEnabled ? onTap : null,
         child: Ink(
           padding: const EdgeInsets.all(ErasTheme.spacingLg),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                color.withOpacity(0.16),
-                color.withOpacity(0.06),
+                cardColor.withOpacity(0.16),
+                cardColor.withOpacity(0.06),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(ErasTheme.borderRadiusXl),
             border: Border.all(
-              color: color.withOpacity(0.4),
+              color: cardColor.withOpacity(0.4),
               width: 1.4,
             ),
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.14),
+                color: cardColor.withOpacity(0.14),
                 blurRadius: 24,
                 offset: const Offset(0, 12),
               ),
@@ -302,11 +345,11 @@ class _ModeCard extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
+                  color: cardColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(ErasTheme.borderRadiusLg),
-                  border: Border.all(color: color.withOpacity(0.35)),
+                  border: Border.all(color: cardColor.withOpacity(0.35)),
                 ),
-                child: Icon(icon, color: color, size: 32),
+                child: Icon(icon, color: cardColor, size: 32),
               ),
               const SizedBox(width: ErasTheme.spacingMd),
               Expanded(
@@ -315,7 +358,7 @@ class _ModeCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: ErasTheme.headlineMedium.copyWith(color: color),
+                      style: ErasTheme.headlineMedium.copyWith(color: cardColor),
                     ),
                     const SizedBox(height: 4),
                     Text(subtitle, style: ErasTheme.bodyMedium),
@@ -326,12 +369,12 @@ class _ModeCard extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.18),
+                  color: cardColor.withOpacity(0.18),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.arrow_forward,
-                  color: color,
+                  color: cardColor,
                   size: 18,
                 ),
               ),
