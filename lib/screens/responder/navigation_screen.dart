@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../config/theme.dart';
 import '../../config/routes.dart';
 import '../../config/constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/emergency_provider.dart';
-import '../../providers/location_provider.dart';
+import '../../providers/demo_provider.dart';
+import '../../widgets/map_view.dart';
 
-/// Navigation screen — full-screen Google Map with turn-by-turn
-/// navigation from responder to victim.
-///
-/// Features:
-/// - Real-time responder position
-/// - Route polyline to victim
-/// - Victim medical profile in bottom sheet
-/// - Chat/Call FABs
+/// Navigation screen using OpenStreetMap (FREE, no API key).
 class NavigationScreen extends ConsumerStatefulWidget {
   const NavigationScreen({super.key});
 
@@ -25,11 +20,12 @@ class NavigationScreen extends ConsumerStatefulWidget {
 }
 
 class _NavigationScreenState extends ConsumerState<NavigationScreen> {
-  GoogleMapController? _mapController;
-  final Set<Marker> _markers = {};
-  final Set<Polyline> _polylines = {};
-
+  final MapController _mapController = MapController();
   String? _emergencyId;
+
+  // Demo victim location (Lagos)
+  final _demoVictimLocation = const LatLng(6.5244, 3.3792);
+  final _demoResponderLocation = const LatLng(6.5280, 3.3750);
 
   @override
   void didChangeDependencies() {
@@ -40,50 +36,62 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final positionAsync = ref.watch(positionStreamProvider);
-    final emergencyAsync = _emergencyId != null
-        ? ref.watch(activeEmergencyProvider)
-        : null;
+    final isDemo = ref.watch(isDemoModeProvider);
+
+    // Build markers
+    final markers = <Marker>[
+      createVictimMarker(_demoVictimLocation),
+      createResponderMarker(_demoResponderLocation),
+    ];
+
+    // Build route polyline
+    final polylines = <Polyline>[
+      Polyline(
+        points: [
+          _demoResponderLocation,
+          LatLng(6.5260, 3.3770),
+          _demoVictimLocation,
+        ],
+        color: ErasTheme.medicalBlue,
+        strokeWidth: 4,
+      ),
+    ];
 
     return Scaffold(
       body: Stack(
         children: [
-          // ── Google Map ────────────────────────────────────────
-          GoogleMap(
-            initialCameraPosition: const CameraPosition(
-              target: LatLng(kDefaultLatitude, kDefaultLongitude),
-              zoom: kDefaultMapZoom,
+          // Map
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _demoVictimLocation,
+              initialZoom: 15,
+              backgroundColor: const Color(0xFF212121),
             ),
-            onMapCreated: (controller) {
-              _mapController = controller;
-
-              // Apply dark map style
-              controller.setMapStyle(_darkMapStyle);
-            },
-            markers: _markers,
-            polylines: _polylines,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
-            compassEnabled: true,
+            children: [
+              TileLayer(
+                urlTemplate:
+                    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                subdomains: const ['a', 'b', 'c', 'd'],
+                userAgentPackageName: 'com.example.eras',
+              ),
+              PolylineLayer(polylines: polylines),
+              MarkerLayer(markers: markers),
+            ],
           ),
 
-          // ── Top bar overlay ──────────────────────────────────
+          // Top bar
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             left: ErasTheme.spacingMd,
             right: ErasTheme.spacingMd,
             child: Row(
               children: [
-                // Back button
                 _CircleButton(
                   icon: Icons.arrow_back,
                   onTap: () => Navigator.pop(context),
                 ),
                 const Spacer(),
-
-                // ETA indicator
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: ErasTheme.spacingMd,
@@ -91,12 +99,9 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: ErasTheme.surfaceDark.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(
-                      ErasTheme.borderRadiusFull,
-                    ),
-                    border: Border.all(
-                      color: ErasTheme.borderSubtle,
-                    ),
+                    borderRadius:
+                        BorderRadius.circular(ErasTheme.borderRadiusFull),
+                    border: Border.all(color: ErasTheme.borderSubtle),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -108,7 +113,7 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Navigating',
+                        isDemo ? 'Demo Navigation' : 'Navigating',
                         style: ErasTheme.labelMedium.copyWith(
                           color: ErasTheme.medicalBlue,
                         ),
@@ -116,27 +121,54 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                     ],
                   ),
                 ),
-
                 const Spacer(),
-
-                // Re-center
                 _CircleButton(
                   icon: Icons.my_location,
                   onTap: () {
-                    positionAsync.whenData((pos) {
-                      _mapController?.animateCamera(
-                        CameraUpdate.newLatLng(
-                          LatLng(pos.latitude, pos.longitude),
-                        ),
-                      );
-                    });
+                    _mapController.move(_demoResponderLocation, 15);
                   },
                 ),
               ],
             ),
           ),
 
-          // ── Bottom sheet: victim info ─────────────────────────
+          // Demo banner
+          if (isDemo)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 60,
+              left: ErasTheme.spacingMd,
+              right: ErasTheme.spacingMd,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: ErasTheme.spacingMd,
+                  vertical: ErasTheme.spacingSm,
+                ),
+                decoration: BoxDecoration(
+                  color: ErasTheme.warningAmber.withOpacity(0.15),
+                  borderRadius:
+                      BorderRadius.circular(ErasTheme.borderRadiusMd),
+                  border: Border.all(
+                    color: ErasTheme.warningAmber.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.science,
+                        color: ErasTheme.warningAmber, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      'DEMO - Simulated navigation',
+                      style: ErasTheme.labelSmall.copyWith(
+                        color: ErasTheme.warningAmber,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Bottom sheet
           Positioned(
             bottom: 0,
             left: 0,
@@ -162,7 +194,6 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Handle
                     Container(
                       width: 40,
                       height: 4,
@@ -172,135 +203,9 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-
-                    // Victim info
-                    emergencyAsync?.when(
-                          data: (emergency) {
-                            if (emergency == null) {
-                              return const SizedBox.shrink();
-                            }
-
-                            return Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    // Type icon
-                                    Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        color: Color(
-                                          emergency.type.colorHex,
-                                        ).withOpacity(0.15),
-                                        borderRadius:
-                                            BorderRadius.circular(
-                                          ErasTheme.borderRadiusMd,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.medical_services,
-                                        color: Color(
-                                          emergency.type.colorHex,
-                                        ),
-                                        size: 22,
-                                      ),
-                                    ),
-                                    const SizedBox(
-                                      width: ErasTheme.spacingSm,
-                                    ),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            emergency.victimName,
-                                            style:
-                                                ErasTheme.titleMedium,
-                                          ),
-                                          Text(
-                                            '${emergency.type.label} Emergency',
-                                            style:
-                                                ErasTheme.labelSmall,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    // Medical profile button
-                                    _CircleButton(
-                                      icon: Icons.medical_information,
-                                      color: ErasTheme.medicalBlue,
-                                      onTap: () {
-                                        _showMedicalProfile(context);
-                                      },
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(
-                                  height: ErasTheme.spacingMd,
-                                ),
-
-                                // Action row
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton.icon(
-                                        onPressed: () {
-                                          Navigator.of(context)
-                                              .pushNamed(
-                                            AppRoutes.chat,
-                                            arguments: emergency.id,
-                                          );
-                                        },
-                                        style: ErasTheme.primaryButton
-                                            .copyWith(
-                                          minimumSize:
-                                              const WidgetStatePropertyAll(
-                                            Size(0, 48),
-                                          ),
-                                        ),
-                                        icon: const Icon(
-                                          Icons.chat_bubble_outline,
-                                          size: 18,
-                                        ),
-                                        label: const Text('Chat'),
-                                      ),
-                                    ),
-                                    const SizedBox(
-                                      width: ErasTheme.spacingSm,
-                                    ),
-                                    Expanded(
-                                      child: ElevatedButton.icon(
-                                        onPressed: () {
-                                          // Mark as arrived / resolved
-                                        },
-                                        style: ErasTheme.acceptButton
-                                            .copyWith(
-                                          minimumSize:
-                                              const WidgetStatePropertyAll(
-                                            Size(0, 48),
-                                          ),
-                                        ),
-                                        icon: const Icon(
-                                          Icons.check_circle_outline,
-                                          size: 18,
-                                        ),
-                                        label:
-                                            const Text("I've Arrived"),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            );
-                          },
-                          loading: () =>
-                              const CircularProgressIndicator(),
-                          error: (_, __) => const SizedBox.shrink(),
-                        ) ??
-                        const SizedBox.shrink(),
+                    _buildVictimInfo(),
+                    const SizedBox(height: ErasTheme.spacingMd),
+                    _buildActionButtons(),
                   ],
                 ),
               ),
@@ -308,6 +213,85 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildVictimInfo() {
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: ErasTheme.sosRed.withOpacity(0.15),
+            borderRadius:
+                BorderRadius.circular(ErasTheme.borderRadiusMd),
+          ),
+          child: const Icon(
+            Icons.medical_services,
+            color: ErasTheme.sosRed,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: ErasTheme.spacingSm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Aisha Mohammed', style: ErasTheme.titleMedium),
+              Text(
+                'Cardiac Emergency \u2022 320m away',
+                style: ErasTheme.labelSmall,
+              ),
+            ],
+          ),
+        ),
+        _CircleButton(
+          icon: Icons.medical_information,
+          color: ErasTheme.medicalBlue,
+          onTap: () => _showMedicalProfile(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).pushNamed(
+                AppRoutes.chat,
+                arguments: _emergencyId ?? 'demo',
+              );
+            },
+            style: ErasTheme.primaryButton.copyWith(
+              minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
+            ),
+            icon: const Icon(Icons.chat_bubble_outline, size: 18),
+            label: const Text('Chat'),
+          ),
+        ),
+        const SizedBox(width: ErasTheme.spacingSm),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Marked as arrived!'),
+                  backgroundColor: ErasTheme.successGreen,
+                ),
+              );
+            },
+            style: ErasTheme.acceptButton.copyWith(
+              minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
+            ),
+            icon: const Icon(Icons.check_circle_outline, size: 18),
+            label: const Text("I've Arrived"),
+          ),
+        ),
+      ],
     );
   }
 
@@ -339,30 +323,27 @@ class _NavigationScreenState extends ConsumerState<NavigationScreen> {
                   ),
                 ),
               ),
-              Text(
-                'Medical Profile',
-                style: ErasTheme.headlineMedium,
-              ),
+              Text('Medical Profile', style: ErasTheme.headlineMedium),
               const SizedBox(height: ErasTheme.spacingMd),
               _ProfileRow(
                 icon: Icons.water_drop,
                 label: 'Blood Type',
-                value: 'Available during active emergency',
+                value: 'O+ (Demo)',
               ),
               _ProfileRow(
                 icon: Icons.warning_amber,
                 label: 'Allergies',
-                value: 'Available during active emergency',
+                value: 'Penicillin (Demo)',
               ),
               _ProfileRow(
                 icon: Icons.local_hospital,
                 label: 'Conditions',
-                value: 'Available during active emergency',
+                value: 'Asthma (Demo)',
               ),
               _ProfileRow(
                 icon: Icons.phone,
                 label: 'Emergency Contact',
-                value: 'Available during active emergency',
+                value: '+234 801 234 5678 (Demo)',
               ),
               const SizedBox(height: ErasTheme.spacingMd),
             ],
@@ -437,22 +418,3 @@ class _ProfileRow extends StatelessWidget {
     );
   }
 }
-
-/// Dark-styled Google Map JSON
-const String _darkMapStyle = '''
-[
-  {"elementType":"geometry","stylers":[{"color":"#212121"}]},
-  {"elementType":"labels.icon","stylers":[{"visibility":"off"}]},
-  {"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},
-  {"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},
-  {"featureType":"administrative","elementType":"geometry","stylers":[{"color":"#757575"}]},
-  {"featureType":"poi","elementType":"geometry","stylers":[{"color":"#181818"}]},
-  {"featureType":"road","elementType":"geometry.fill","stylers":[{"color":"#2c2c2c"}]},
-  {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#8a8a8a"}]},
-  {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#373737"}]},
-  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#3c3c3c"}]},
-  {"featureType":"road.highway.controlled_access","elementType":"geometry","stylers":[{"color":"#4e4e4e"}]},
-  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#2f3948"}]},
-  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#17263c"}]}
-]
-''';

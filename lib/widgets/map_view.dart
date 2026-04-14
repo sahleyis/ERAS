@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../config/theme.dart';
 import '../config/constants.dart';
 
-/// Reusable Google Map view widget with dark styling.
+/// Reusable OpenStreetMap view widget (FREE - no API key needed).
 class ErasMapView extends StatelessWidget {
   final LatLng? center;
-  final Set<Marker>? markers;
-  final Set<Polyline>? polylines;
+  final List<Marker>? markers;
+  final List<Polyline>? polylines;
   final double zoom;
-  final void Function(GoogleMapController)? onMapCreated;
+  final MapController? mapController;
   final bool showMyLocation;
 
   const ErasMapView({
@@ -18,49 +19,96 @@ class ErasMapView extends StatelessWidget {
     this.markers,
     this.polylines,
     this.zoom = kDefaultMapZoom,
-    this.onMapCreated,
+    this.mapController,
     this.showMyLocation = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GoogleMap(
-      initialCameraPosition: CameraPosition(
-        target: center ??
-            const LatLng(kDefaultLatitude, kDefaultLongitude),
-        zoom: zoom,
+    final mapCenter =
+        center ?? LatLng(kDefaultLatitude, kDefaultLongitude);
+
+    return FlutterMap(
+      mapController: mapController,
+      options: MapOptions(
+        initialCenter: mapCenter,
+        initialZoom: zoom,
+        maxZoom: 18,
+        minZoom: 3,
+        backgroundColor: const Color(0xFF212121),
       ),
-      onMapCreated: (controller) {
-        controller.setMapStyle(_darkMapStyle);
-        onMapCreated?.call(controller);
-      },
-      markers: markers ?? {},
-      polylines: polylines ?? {},
-      myLocationEnabled: showMyLocation,
-      myLocationButtonEnabled: false,
-      zoomControlsEnabled: false,
-      mapToolbarEnabled: false,
-      compassEnabled: true,
-      buildingsEnabled: false,
-      indoorViewEnabled: false,
+      children: [
+        // Dark tile layer (free, no key)
+        TileLayer(
+          urlTemplate:
+              'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+          subdomains: const ['a', 'b', 'c', 'd'],
+          userAgentPackageName: 'com.example.eras',
+          retinaMode: true,
+        ),
+
+        // Polylines (routes)
+        if (polylines != null && polylines!.isNotEmpty)
+          PolylineLayer(polylines: polylines!),
+
+        // Markers
+        if (markers != null && markers!.isNotEmpty)
+          MarkerLayer(markers: markers!),
+      ],
     );
   }
 }
 
-const String _darkMapStyle = '''
-[
-  {"elementType":"geometry","stylers":[{"color":"#212121"}]},
-  {"elementType":"labels.icon","stylers":[{"visibility":"off"}]},
-  {"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},
-  {"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},
-  {"featureType":"administrative","elementType":"geometry","stylers":[{"color":"#757575"}]},
-  {"featureType":"poi","elementType":"geometry","stylers":[{"color":"#181818"}]},
-  {"featureType":"road","elementType":"geometry.fill","stylers":[{"color":"#2c2c2c"}]},
-  {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#8a8a8a"}]},
-  {"featureType":"road.arterial","elementType":"geometry","stylers":[{"color":"#373737"}]},
-  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#3c3c3c"}]},
-  {"featureType":"road.highway.controlled_access","elementType":"geometry","stylers":[{"color":"#4e4e4e"}]},
-  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#2f3948"}]},
-  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#17263c"}]}
-]
-''';
+/// Helper to create a standard victim marker.
+Marker createVictimMarker(LatLng position) {
+  return Marker(
+    point: position,
+    width: 50,
+    height: 50,
+    child: Container(
+      decoration: BoxDecoration(
+        color: ErasTheme.sosRed,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: ErasTheme.sosRed.withOpacity(0.4),
+            blurRadius: 12,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.sos,
+        color: Colors.white,
+        size: 24,
+      ),
+    ),
+  );
+}
+
+/// Helper to create a responder marker.
+Marker createResponderMarker(LatLng position, {String? label}) {
+  return Marker(
+    point: position,
+    width: 50,
+    height: 50,
+    child: Container(
+      decoration: BoxDecoration(
+        color: ErasTheme.medicalBlue,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: ErasTheme.medicalBlue.withOpacity(0.4),
+            blurRadius: 12,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.medical_services,
+        color: Colors.white,
+        size: 24,
+      ),
+    ),
+  );
+}
