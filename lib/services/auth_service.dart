@@ -79,6 +79,34 @@ class AuthService {
     return _getUserModel(credential.user!.uid);
   }
 
+  /// Continue without registration using Firebase anonymous auth.
+  Future<UserModel> signInAsGuest() async {
+    final credential = await _auth.signInAnonymously();
+    final user = credential.user;
+    if (user == null) {
+      throw Exception('Unable to create guest session');
+    }
+
+    final existing = await _getUserModel(user.uid);
+    if (existing != null) {
+      return existing;
+    }
+
+    final guest = UserModel(
+      uid: user.uid,
+      displayName: 'Guest ${user.uid.substring(0, 6).toUpperCase()}',
+      isGuest: true,
+      role: UserRole.victim,
+    );
+
+    await _firestore
+        .collection(kUsersCollection)
+        .doc(guest.uid)
+        .set(guest.toFirestore());
+
+    return guest;
+  }
+
   // ─── Phone Auth (OTP) ─────────────────────────────────────
 
   /// Start phone number verification (sends OTP).

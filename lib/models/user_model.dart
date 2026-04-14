@@ -134,6 +134,7 @@ class ResponderProfile {
 class UserModel {
   final String uid;
   final String displayName;
+  final bool isGuest;
   final String email;
   final String phone;
   final String? photoUrl;
@@ -146,6 +147,7 @@ class UserModel {
   const UserModel({
     required this.uid,
     required this.displayName,
+    this.isGuest = false,
     this.email = '',
     this.phone = '',
     this.photoUrl,
@@ -161,6 +163,7 @@ class UserModel {
     return UserModel(
       uid: doc.id,
       displayName: data['displayName'] as String? ?? '',
+      isGuest: data['isGuest'] as bool? ?? false,
       email: data['email'] as String? ?? '',
       phone: data['phone'] as String? ?? '',
       photoUrl: data['photoUrl'] as String?,
@@ -182,6 +185,7 @@ class UserModel {
   Map<String, dynamic> toFirestore() {
     return {
       'displayName': displayName,
+      'isGuest': isGuest,
       'email': email,
       'phone': phone,
       'photoUrl': photoUrl,
@@ -198,6 +202,7 @@ class UserModel {
 
   UserModel copyWith({
     String? displayName,
+    bool? isGuest,
     String? email,
     String? phone,
     String? photoUrl,
@@ -208,6 +213,7 @@ class UserModel {
     return UserModel(
       uid: uid,
       displayName: displayName ?? this.displayName,
+      isGuest: isGuest ?? this.isGuest,
       email: email ?? this.email,
       phone: phone ?? this.phone,
       photoUrl: photoUrl ?? this.photoUrl,
